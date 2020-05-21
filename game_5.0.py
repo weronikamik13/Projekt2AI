@@ -1,6 +1,6 @@
 import math
 import copy
-import time
+import datetime
 from statistics import mean
 
 
@@ -337,7 +337,7 @@ class Environment:
         known_places = self.board.value_known_places()
 
         for i in range(max_moves):
-            t = time.time()
+            a = datetime.datetime.now()
             print()
             print('Move ' + str(i))
             print('Possible moves: ' + str(self.board.possible_moves()))
@@ -349,7 +349,9 @@ class Environment:
             print('It knows:', known_places)
             self.ai.percept({'type': sel_move})
             self.ai.percept({'type': 'new_board', 'board': self.extract_player_board(self.board)})
-            self.board.elapsed.append(time.time() - t)
+            b = datetime.datetime.now()
+            delta = b - a
+            self.board.elapsed.append(delta.total_seconds() * 1000)
 
             if wait_after_step:
                 a = input()

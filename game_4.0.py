@@ -380,7 +380,7 @@ board2 = Board([['W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W'],
 
 # starting a game when the script runs
 if __name__ == "__main__":
-    env = Environment(board2, BacktrackingAgent())
+    env = Environment(board1, BacktrackingAgent())
     try:
         env.play_game(wait_after_step=True)
     except Exception as e:
