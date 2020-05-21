@@ -1,12 +1,16 @@
+import math
+import copy
 import datetime
 from statistics import mean
 
 class Board:
+
     def __init__(self, board):
         """
         Initializes the board with given list of tiles.
         """
         self.board = board
+
         # actor position is determined based on the position of tile 'B'
         for i in range(len(self.board)):
             for j in range(len(self.board[i])):
@@ -14,24 +18,29 @@ class Board:
                     self.actor_pos = (i, j)
         # 'r' is the default passable state
         self.passable = 'r'
-        self.elapsed = []
 
+        # Initializes the known_places with actor position + neighborhood
+        self.known_places = []
+        self.known_places.append((self.actor_pos[0] + 1, self.actor_pos[1]))
+        self.known_places.append((self.actor_pos[0] - 1, self.actor_pos[1]))
+        self.known_places.append((self.actor_pos[0], self.actor_pos[1] + 1))
+        self.known_places.append((self.actor_pos[0], self.actor_pos[1] - 1))
+
+        self.elapsed = []
 
     def print_board(self):
         print('passable: ' + self.passable)
+
         for i in range(len(self.board)):
             for j in range(len(self.board[i])):
                 if (i, j) == self.actor_pos:
-                    print('@', end='')
+                    print('@', end=' ')
                 else:
-                    print(self.board[i][j], end='')
-
+                    print(self.board[i][j], end=' ')
             print()
-
 
     def tile_state(self, pos):
         return self.board[pos[0]][pos[1]]
-
 
     def is_tile_free(self, pos):
         """
@@ -43,8 +52,6 @@ class Board:
         else:
             return self.tile_state(pos) == self.passable
 
-
-
     def is_move_possible(self, move):
         """
         Determine whether the given move is possible in the current state
@@ -52,13 +59,13 @@ class Board:
         Throws an error for a nonexisting move.
         """
         if move == 'move up':
-            return self.is_tile_free((self.actor_pos[0 ] -1, self.actor_pos[1]))
+            return self.is_tile_free((self.actor_pos[0] - 1, self.actor_pos[1]))
         elif move == 'move down':
-            return self.is_tile_free((self.actor_pos[0 ] +1, self.actor_pos[1]))
+            return self.is_tile_free((self.actor_pos[0] + 1, self.actor_pos[1]))
         elif move == 'move left':
-            return self.is_tile_free((self.actor_pos[0], self.actor_pos[1 ] -1))
+            return self.is_tile_free((self.actor_pos[0], self.actor_pos[1] - 1))
         elif move == 'move right':
-            return self.is_tile_free((self.actor_pos[0], self.actor_pos[1 ] +1))
+            return self.is_tile_free((self.actor_pos[0], self.actor_pos[1] + 1))
         elif move == 'switch':
             return self.tile_state(self.actor_pos) == 'S'
         elif move == 'finish':
@@ -66,10 +73,8 @@ class Board:
         else:
             raise Exception("Unknown move: " + str(move))
 
-
     all_moves = ['move up', 'move down', 'move left', 'move right', 'switch',
                  'finish']
-
 
     def reverse_move(self, move):
         """
@@ -89,31 +94,28 @@ class Board:
         else:
             raise Exception('Move not reversible: ' + move)
 
-
     def possible_moves(self):
         """
         Calculate the list of moves an actor can perform in the current state.
         """
         return [m for m in Board.all_moves if self.is_move_possible(m)]
 
-
     def position_after_move(self, move):
         """
         Calculate the position of the actor after given move.
         """
         if move == 'move up':
-            return (self.actor_pos[0 ] -1, self.actor_pos[1])
+            return (self.actor_pos[0] - 1, self.actor_pos[1])
         elif move == 'move down':
-            return (self.actor_pos[0 ] +1, self.actor_pos[1])
+            return (self.actor_pos[0] + 1, self.actor_pos[1])
         elif move == 'move left':
-            return (self.actor_pos[0], self.actor_pos[1 ] -1)
+            return (self.actor_pos[0], self.actor_pos[1] - 1)
         elif move == 'move right':
-            return (self.actor_pos[0], self.actor_pos[1 ] +1)
+            return (self.actor_pos[0], self.actor_pos[1] + 1)
         elif move == 'switch':
             return self.actor_pos
         else:
             raise Exception('Not a move move: ' + move)
-
 
     def make_move(self, move):
         """
@@ -129,6 +131,10 @@ class Board:
 
         if move[:4] == 'move':
             self.actor_pos = self.position_after_move(move)
+            self.known_places.append((self.actor_pos[0] + 1, self.actor_pos[1]))
+            self.known_places.append((self.actor_pos[0] - 1, self.actor_pos[1]))
+            self.known_places.append((self.actor_pos[0], self.actor_pos[1] + 1))
+            self.known_places.append((self.actor_pos[0], self.actor_pos[1] - 1))
         elif move == 'switch':
             if self.passable == 'r':
                 self.passable = 'g'
@@ -144,16 +150,18 @@ class Board:
 
         return True
 
+    def value_known_places(self):
+        return self.known_places
 
 
 class BacktrackingAgent:
     """
     An agent that explores the environment using backtracking.
     """
-    def __init__(self, init_board = None):
+
+    def __init__(self, init_board=None):
         if init_board != None:
             self.set_board(init_board)
-
 
     def set_board(self, init_board):
         """
@@ -176,7 +184,6 @@ class BacktrackingAgent:
         self.state_stack = []
         self.mode = 'forward'
 
-
     def reaches_new_state(self, move):
         """
         Determines whether the given move moves the actor to an unvisited state.
@@ -185,6 +192,11 @@ class BacktrackingAgent:
         vb = self.visited[pam[0]][pam[1]]
         return self.board.passable not in vb
 
+    def find_E(self):
+        for i in range(len(self.board.board)):
+            for j in range(len(self.board.board[i])):
+                if self.board.board[i][j] == "E":
+                    return (i, j)
 
     def move(self, env):
         """
@@ -211,10 +223,20 @@ class BacktrackingAgent:
 
             # otherwise go forward and record taken move and other possible
             # moves on the state stack
-            self.state_stack.append({'taken move': pmoves[0],
-                                     'other moves': pmoves[1:]})
+            if "switch" in pmoves:
+                self.state_stack.append({'taken move': pmoves[0],
+                                         'other moves': pmoves[1:]})
+                return pmoves[0]
 
-            return pmoves[0]
+            # odleglosc euklidesowa z 66 do ruchów 34
+            p_moves_coordinates = [self.board.position_after_move(el) for el in pmoves]
+            E_coordinates = self.find_E()
+            dist_between_move_and_exit = [math.dist(el, E_coordinates) for el in p_moves_coordinates]
+            indx = dist_between_move_and_exit.index(min(dist_between_move_and_exit))
+            self.state_stack.append({'taken move': pmoves[indx],
+                                     'other moves': pmoves[:indx] + pmoves[indx + 1:]})
+
+            return pmoves[indx]
 
         elif self.mode == 'backtrack':
             print('backtracking')
@@ -239,7 +261,6 @@ class BacktrackingAgent:
 
                 return btr_possible_moves[0]
 
-
     def percept(self, data):
         """
         Informs the agent about changes in the environment.
@@ -253,6 +274,8 @@ class BacktrackingAgent:
             self.board.make_move(data['type'])
         elif data['type'] == 'switch':
             self.board.make_move('switch')
+        elif data['type'] == 'new_board':
+            self.board = data['board']
 
 
 class Environment:
@@ -261,7 +284,14 @@ class Environment:
         self.ai = ai
 
     def extract_player_board(self, board):
-        return Board(board.board)
+        copy_board = copy.deepcopy(board)
+
+        for i in range(len(self.board.board)):
+            for j in range(len(self.board.board[i])):
+                if (i, j) not in board.known_places and self.board.board[i][j] != "B" and self.board.board[i][j] != "E":
+                    copy_board.board[i][j] = "?"
+
+        return copy_board
 
     def possible_moves(self):
         return self.board.possible_moves()
@@ -273,18 +303,24 @@ class Environment:
         before the game continues.
         """
         self.ai.set_board(self.extract_player_board(self.board))
+        known_places = self.board.value_known_places()
 
         for i in range(max_moves):
             a = datetime.datetime.now()
             print()
             print('Move ' + str(i))
             print('Possible moves: ' + str(self.board.possible_moves()))
-            self.board.print_board()
+            self.ai.board.print_board()
             sel_move = self.ai.move(self)
             print('Move: ' + sel_move)
             result = self.board.make_move(sel_move)
             print('Move result: ' + str(result))
-            self.ai.percept({'type': sel_move})
+            print('It knows:', known_places)
+            self.ai.percept({'type': sel_move})  # Informs the agent about changes in the environment.
+            # At this moment it only tells whether the agent actually moved
+            # and whether the switching was successful.
+
+            self.ai.percept({'type': 'new_board', 'board': self.extract_player_board(self.board)})
             b = datetime.datetime.now()
             delta = b - a
             self.board.elapsed.append(delta.total_seconds() * 1000)
@@ -293,9 +329,10 @@ class Environment:
                 if a == 'F':
                     wait_after_step = False
 
+
 # Two game boards for testing.
 # 'W' -- Wall. Not passable.
-# ' ' -- Passable space.
+# '.' -- Passable space.
 # 'B' -- The place where the actor begins.
 # 'E' -- The place the actor needs to reach.
 # 'r' -- Tiles passable when the switch is in position 'r' (default).
@@ -313,7 +350,6 @@ board1 = Board([['W', 'W', 'W', 'W', 'W'],
                 ['W', 'B', ' ', ' ', 'W'],
                 ['W', 'W', 'W', 'W', 'W']])
 
-
 board2 = Board([['W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W'],
                 ['W', ' ', ' ', ' ', ' ', 'g', ' ', ' ', 'S', 'W'],
                 ['W', 'W', ' ', 'W', ' ', 'W', 'W', ' ', 'W', 'W'],
@@ -322,11 +358,11 @@ board2 = Board([['W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W'],
                 ['W', 'B', ' ', ' ', 'S', ' ', 'W', ' ', 'W', 'W'],
                 ['W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W']])
 
-
 # starting a game when the script runs
 if __name__ == "__main__":
-    env = Environment(board1, BacktrackingAgent())
+    env = Environment(board2, BacktrackingAgent())
     try:
         env.play_game(wait_after_step=True)
     except Exception as e:
         print('Exception happened: ' + str(e))
+

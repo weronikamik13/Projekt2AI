@@ -1,3 +1,4 @@
+import math
 import copy
 import datetime
 from statistics import mean
@@ -142,9 +143,8 @@ class Board:
                 self.passable = 'r'
         elif move == 'finish':
             if self.tile_state(self.actor_pos) == 'E':
-
-                print("Time needed to end the game:", sum(self.elapsed))
-                print("Mean time needed for one turn:", mean(self.elapsed))
+                print("Time needed to make a choose during the whole game:", sum(self.elapsed))
+                print("Mean time needed to make a choose:", mean(self.elapsed))
                 raise Exception("You won!")
         else:
             raise Exception("Unknown move: " + str(move))
@@ -242,18 +242,18 @@ class BacktrackingAgent:
 
             # otherwise go forward and record taken move and other possible
             # moves on the state stack
-            # if "switch" in pmoves:
-            self.state_stack.append({'taken move': pmoves[0],
+            if "switch" in pmoves:
+                self.state_stack.append({'taken move': pmoves[0],
                                      'other moves': pmoves[1:]})
-            return pmoves[0]
-            # odleglosc euklidesowa z 66 do ruchów 34
-            # p_moves_coordinates=[self.board.position_after_move(el) for el in pmoves]
-            # E_coordinates=self.find_E()
-            # dist_between_move_and_exit=[math.dist(el,E_coordinates) for el in p_moves_coordinates]
-            # indx=dist_between_move_and_exit.index(min(dist_between_move_and_exit))
-            # self.state_stack.append({'taken move': pmoves[indx],
-            #                        'other moves': pmoves[:indx]+pmoves[indx+1:]})
-        # return pmoves[indx]
+                return pmoves[0]
+
+            p_moves_coordinates=[self.board.position_after_move(el) for el in pmoves]
+            E_coordinates=self.find_E()
+            dist_between_move_and_exit=[math.dist(el,E_coordinates) for el in p_moves_coordinates]
+            indx=dist_between_move_and_exit.index(min(dist_between_move_and_exit))
+            self.state_stack.append({'taken move': pmoves[indx],
+                                    'other moves': pmoves[:indx]+pmoves[indx+1:]})
+            return pmoves[indx]
 
         elif self.mode == 'backtrack':
             print('backtracking')
@@ -341,7 +341,7 @@ class Environment:
 
             self.ai.percept({'type': 'new_board', 'board': self.extract_player_board(self.board)})
             b = datetime.datetime.now()
-            delta = b-a
+            delta = b - a
             self.board.elapsed.append(delta.total_seconds() * 1000)
 
             if wait_after_step:
